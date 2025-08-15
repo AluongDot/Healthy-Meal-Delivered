@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meal Delivery Service MVP</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Custom styles -->
+  <style>
+    .modal {
+      display: none;
+    }
+    .modal.open {
+      display: flex;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4 font-sans">
+
+  <!-- Main Container -->
+  <div class="bg-white rounded-3xl shadow-xl w-full max-w-4xl p-8">
+
+    <!-- Header -->
+    <header class="text-center mb-12">
+      <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 leading-tight">
+        Healthy Meals Delivered
+      </h1>
+        <p class="text-lg md:text-xl text-gray-600 mt-4">
+            Enjoy delicious, nutritious meals delivered right to your door.
+    </header>
+
+    <!-- Menu Section -->
+    <main id="menu-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <!-- JS will insert meal cards here -->
+    </main>
+
+    <!-- Cart Section -->
+    <div class="mt-8 border-t-2 border-gray-200 pt-6">
+      <h2 class="text-3xl font-bold text-gray-900 mb-4">Order Now</h2>
+      <div id="cart-container" class="space-y-4 mb-6">
+        <p id="empty-cart-message" class="text-gray-500 italic">Your Order Now is empty.</p>
+      </div>
+      <div class="flex justify-end items-center">
+        <span class="text-2xl font-bold text-gray-900 mr-4">
+          Total: Ksh<span id="cart-total">0.00</span>
+        </span>
+        <button id="checkout-btn" class="bg-indigo-600 text-white font-bold py-3 px-6 rounded-full shadow-lg hover:bg-indigo-700 transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
+          Checkout
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Checkout Confirmation Modal -->
+  <div id="confirmation-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md text-center transform transition-transform duration-300 scale-95 opacity-0">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-green-500 mx-auto mb-4" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+      </svg>
+      <h3 class="text-2xl font-bold text-gray-800 mb-2">Order Confirmed!</h3>
+      <p class="text-gray-600 mb-6">
+        Thank you for your order. We'll be in touch shortly to finalize delivery details and payment.
+      </p>
+      <button id="close-modal-btn" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-full hover:bg-indigo-700 transition duration-300">
+        Close
+      </button>
+    </div>
+  </div>
+
+  <!-- JavaScript -->
+  <script>
+    const meals = [
+      { id: 1, name: 'Grilled Salmon with Asparagus', description: 'A delicious and healthy meal of pan-seared salmon with roasted asparagus and a lemon-dill sauce.', price: 150, image: 'https://placehold.co/400x300/4F46E5/ffffff?text=Salmon' },
+      { id: 2, name: 'Quinoa Bowl with Roasted Vegetables', description: 'A vibrant and flavorful bowl with fluffy quinoa, sweet potatoes, broccoli, and a tahini dressing.', price: 250.00, image: 'https://placehold.co/400x300/F59E0B/ffffff?text=Quinoa' },
+      { id: 3, name: 'Chicken and Avocado Salad', description: 'Grilled chicken breast on a bed of fresh greens, topped with avocado, cherry tomatoes, and a light vinaigrette.', price: 260.25, image: 'https://placehold.co/400x300/10B981/ffffff?text=Salad' },
+    ];
+
+    let cart = [];
+
+    const menuContainer = document.getElementById('menu-container');
+    const cartContainer = document.getElementById('cart-container');
+    const cartTotalSpan = document.getElementById('cart-total');
+    const emptyCartMessage = document.getElementById('empty-cart-message');
+    const checkoutBtn = document.getElementById('checkout-btn');
+    const confirmationModal = document.getElementById('confirmation-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+
+    function renderMenu() {
+      menuContainer.innerHTML = '';
+      meals.forEach(meal => {
+        const mealCard = document.createElement('div');
+        mealCard.className = 'bg-white rounded-2xl shadow-md overflow-hidden transform hover:scale-105 transition-transform duration-300';
+        mealCard.innerHTML = `
+          <img src="${meal.image}" alt="${meal.name}" class="w-full h-48 object-cover">
+          <div class="p-6">
+            <h3 class="text-xl font-bold text-gray-900">${meal.name}</h3>
+            <p class="text-gray-500 mt-2 text-sm">${meal.description}</p>
+            <div class="flex items-center justify-between mt-4">
+              <span class="text-2xl font-bold text-indigo-600">Ksh${meal.price.toFixed(2)}</span>
+              <button data-meal-id="${meal.id}" class="add-to-cart-btn bg-indigo-500 text-white font-semibold py-2 px-4 rounded-full hover:bg-indigo-600 transition duration-300">
+                Add to Cart
+              </button>
+            </div>
+          </div>
+        `;
+        menuContainer.appendChild(mealCard);
+      });
+    }
+
+    function renderCart() {
+      cartContainer.innerHTML = '';
+      let total = 0;
+
+      if (cart.length > 0) {
+        emptyCartMessage.classList.add('hidden');
+        cart.forEach(item => {
+          const meal = meals.find(m => m.id === item.mealId);
+          if (meal) {
+            const cartItem = document.createElement('div');
+            cartItem.className = 'flex items-center justify-between p-4 bg-gray-50 rounded-lg';
+            cartItem.innerHTML = `
+              <span class="text-gray-800 font-semibold">${meal.name}</span>
+              <span class="text-gray-600">Ksh${meal.price.toFixed(2)}</span>
+            `;
+            cartContainer.appendChild(cartItem);
+            total += meal.price;
+          }
+        });
+        checkoutBtn.disabled = false;
+      } else {
+        emptyCartMessage.classList.remove('hidden');
+        checkoutBtn.disabled = true;
+      }
+      cartTotalSpan.textContent = total.toFixed(2);
+    }
+
+    function OrderNow(mealId) {
+      cart.push({ mealId });
+      renderCart();
+    }
+
+    function checkout() {
+      confirmationModal.classList.OrderNow('open');
+      const modalContent = confirmationModal.querySelector('div');
+      modalContent.classList.remove('scale-95', 'opacity-0');
+      modalContent.classList.OrderNow('scale-100', 'opacity-100');
+      cart = [];
+      renderCart();
+    }
+
+    document.addEventListener('click', (e) => {
+      if (e.target.classList.contains('add-to-cart-btn')) {
+        const mealId = parseInt(e.target.dataset.mealId);
+        addToCart(mealId);
+      }
+    });
+
+    checkoutBtn.addEventListener('click', checkout);
+
+    closeModalBtn.addEventListener('click', () => {
+      const modalContent = confirmationModal.querySelector('div');
+      modalContent.classList.remove('scale-100', 'opacity-100');
+      modalContent.classList.add('scale-95', 'opacity-0');
+      setTimeout(() => {
+        confirmationModal.classList.remove('open');
+      }, 300);
+    });
+
+    renderMenu();
+    renderCart();
+  </script>
+</body>
+</html>
